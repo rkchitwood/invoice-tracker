@@ -9,7 +9,7 @@ beforeEach(async function(){
     let result = await db.query(
         `INSERT INTO companies (code, name)
             VALUES ('tst', 'TestCo')
-            RETURNING id, code, name`
+            RETURNING code, name`
     );
     console.log('after first query')
     testCompany = result.rows[0];
@@ -25,7 +25,7 @@ afterAll(async function(){
 
 describe('GET /companies', function(){
     test('gets a list of 1 company', async function(){
-        const response = await request(app).get('/ccompany');
+        const response = await request(app).get('/companies');
         expect(response.statusCode).toEqual(200);
         expect(response.body).toEqual({
             companies: [testCompany]

@@ -4,7 +4,7 @@ const ExpressError = require('../expressError');
 const db = require('../db');
 let router = new express.Router();
 
-router.get('search', async function(req, res, next){
+router.get('/', async function(req, res, next){
     try{
         const result = await db.query(
             `SELECT code, name
