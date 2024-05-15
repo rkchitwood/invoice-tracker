@@ -1,7 +1,8 @@
 const express = require('express');
-const router = express.Router();
+const slugify = require('slugify');
 const ExpressError = require('../expressError');
 const db = require('../db');
+let router = new express.Router();
 
 router.get('search', async function(req, res, next){
     try{
@@ -16,16 +17,41 @@ router.get('search', async function(req, res, next){
     }
 });
 
+//when viewing details for a company, you can see the names of the industries for that company
 router.get('/:code', async function(req, res, next){
     try{
         const code = req.params.code;
-        const result = await db.query(
+        const compResult = await db.query(
             `SELECT code, name, description
             FROM companies
             WHERE code = $1`,
             [code]
         );
-        return res.json({'company': result.rows[0]});
+        if(compResult.rows.length === 0){
+            throw new ExpressError('no company found', 404);
+        }
+        const invResult = await db.query(
+            `SELECT id
+            FROM invoices
+            WHERE comp_code=$1`,
+            [code]
+        );
+        const indResult = await db.query(
+            `SELECT i.name
+            FROM industries AS i
+                LEFT JOIN industry_companies AS ic
+                    ON i.id=ic.industry_id
+                LEFT JOIN companies AS c
+                    ON ic.company_id = c.id
+            WHERE c.id=$1`,
+            [code]
+        );
+        const company = compResult.rows[0];
+        const invoices = invResult.rows;
+        const industries = indResult.rows;
+        company.invoices = invoices.map(inv => inv.id);
+        company.industries = industries.map(ind => ind.id)
+        return res.json({'company': company});
     }catch(err){
         return next(err);
     }
@@ -33,7 +59,8 @@ router.get('/:code', async function(req, res, next){
 
 router.post('/', async function(req, res, next){
     try{
-        const { code, name, description } = req.body;
+        const { name, description } = req.body;
+        const code = slugify(name, {lower: true});
         const result = await db.query(
             `INERT INTO companies (code, name, description)
             VALUES($1, $2, $3)
